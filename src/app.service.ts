@@ -33,7 +33,7 @@ export class AppService {
       `lookForFeeds service activated. alertTimeoutInSeconds was set to ${this.alertTimeoutInSeconds}`,
     );
 
-    fs.watch(this.feedsDirectory, (event, filename) => {
+    fs.watch(this.feedsDirectory, (_event, filename) => {
       if (fs.existsSync(`${this.feedsDirectory}\\${filename}`)) {
         this.checkAndReportNewFeed(filename);
       }
@@ -60,16 +60,16 @@ export class AppService {
     scheduler.addSimpleIntervalJob(job);
   }
 
-  private checkAndReportNewFeed(fileName: string) {
+  private async checkAndReportNewFeed(fileName: string) {
     this.logger.verbose(`Checking validity of file ${fileName}`);
     const isValidFileType = fileName.endsWith(this.validFeedFileSuffix);
     const fileNameWithoutSuffix = fileName.replace(
       this.validFeedFileSuffix,
       '',
     );
-    if (this.validUserIds.includes(fileNameWithoutSuffix)) {
+    if (isValidFileType && this.validUserIds.includes(fileNameWithoutSuffix)) {
       this.latestFeedTimeStamp = Date.now();
-      this.dbService.writeToDb(this.latestFeedTimeStamp, fileName);
+      await this.dbService.writeToDb(this.latestFeedTimeStamp, fileName);
     }
   }
 
