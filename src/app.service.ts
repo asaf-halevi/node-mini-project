@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from 'toad-scheduler';
 import { TaskId } from './models/app.model';
 import * as fs from 'fs';
+import { DbService } from './db/db.service';
 
 @Injectable()
 export class AppService {
@@ -14,7 +15,10 @@ export class AppService {
   private isErrorModeTurnedOn = false;
   private latestFeedTimeStamp: number;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly dbService: DbService,
+  ) {
     this.alertTimeoutInSeconds = this.configService.get(
       'alertTimeoutInSeconds',
     );
@@ -65,15 +69,14 @@ export class AppService {
     );
     if (this.validUserIds.includes(fileNameWithoutSuffix)) {
       this.latestFeedTimeStamp = Date.now();
-      //todo - write to DB
-      this.logger.log(`Reporting ${fileName} to DB`);
+      this.dbService.writeToDb(this.latestFeedTimeStamp, fileName);
     }
   }
 
   private feedArrived() {
     if (this.isErrorModeTurnedOn) {
       this.isErrorModeTurnedOn = false;
-      this.logger.log(`Back to noraml - new feeds found`);
+      this.logger.log(`Back to normal - new feeds found`);
     }
   }
 
