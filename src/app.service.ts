@@ -64,16 +64,13 @@ export class AppService {
       '',
     );
     if (this.validUserIds.includes(fileNameWithoutSuffix)) {
-      // relevantFileNames.push(fileNameWithoutSuffix);
-      //todo - write to DB
-
       this.latestFeedTimeStamp = Date.now();
-      this.logger.log(`sending to DB ${fileName}`);
+      //todo - write to DB
+      this.logger.log(`Reporting ${fileName} to DB`);
     }
   }
 
   private feedArrived() {
-    //TODO - ADD TESTS
     if (this.isErrorModeTurnedOn) {
       this.isErrorModeTurnedOn = false;
       this.logger.log(`Back to noraml - new feeds found`);
@@ -81,7 +78,6 @@ export class AppService {
   }
 
   private feedFailure() {
-    //TODO - ADD TESTS
     if (!this.isErrorModeTurnedOn) {
       this.isErrorModeTurnedOn = true;
       this.logger.warn(`Warning - No new feeds found`);
