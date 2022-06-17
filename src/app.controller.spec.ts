@@ -16,7 +16,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return void', () => {
-      expect(appController.lookForFeeds()).toBeNull();
+      expect(appController.startApplication()).toBeNull();
     });
   });
 });

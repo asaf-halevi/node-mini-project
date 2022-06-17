@@ -8,7 +8,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  lookForFeeds() {
+  startApplication() {
     this.logger.log('App started');
     this.appService.lookForFeeds();
   }
