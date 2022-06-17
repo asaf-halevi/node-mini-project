@@ -1,3 +1,3 @@
 export enum TaskId {
-  LOOK_FOR_FEEDS = 'ID_1',
+  CHECK_FOR_ERRORS = 'ID_1',
 }

@@ -12,6 +12,7 @@ export class AppService {
   private readonly validFeedFileSuffix: string;
   private readonly validUserIds: string[];
   private isErrorModeTurnedOn = false;
+  private latestFeedTimeStamp: number;
 
   constructor(private readonly configService: ConfigService) {
     this.alertTimeoutInSeconds = this.configService.get(
@@ -20,6 +21,7 @@ export class AppService {
     this.feedsDirectory = this.configService.get('feedsDirectory');
     this.validFeedFileSuffix = this.configService.get('validFeedFileSuffix');
     this.validUserIds = this.configService.get('validUserIds');
+    this.latestFeedTimeStamp = Date.now();
   }
 
   lookForFeeds() {
@@ -27,12 +29,17 @@ export class AppService {
       `lookForFeeds service activated. alertTimeoutInSeconds was set to ${this.alertTimeoutInSeconds}`,
     );
 
+    fs.watch(this.feedsDirectory, (event, filename) => {
+      if (fs.existsSync(`${this.feedsDirectory}\\${filename}`)) {
+        this.checkAndReportNewFeed(filename);
+      }
+    });
+
     const scheduler = new ToadScheduler();
-    const lookForFeedsTask = new AsyncTask(
-      'look for feeds',
+    const checkForErrors = new AsyncTask(
+      'check for errors',
       () => {
-        const timeStamp = Date.now();
-        return this.isNewFeedArrived(timeStamp).then(() => {
+        return this.checkForErrorsInFeed().then(() => {
           return;
         });
       },
@@ -42,60 +49,51 @@ export class AppService {
     );
     const job = new SimpleIntervalJob(
       { seconds: this.alertTimeoutInSeconds, runImmediately: true },
-      lookForFeedsTask,
-      TaskId.LOOK_FOR_FEEDS,
+      checkForErrors,
+      TaskId.CHECK_FOR_ERRORS,
     );
 
     scheduler.addSimpleIntervalJob(job);
   }
 
-  private async isNewFeedArrived(timeStamp: number) {
-    this.logger.verbose(
-      `Checking for new feeds in ${this.feedsDirectory} at ${timeStamp}`,
+  private checkAndReportNewFeed(fileName: string) {
+    this.logger.verbose(`Checking validity of file ${fileName}`);
+    const isValidFileType = fileName.endsWith(this.validFeedFileSuffix);
+    const fileNameWithoutSuffix = fileName.replace(
+      this.validFeedFileSuffix,
+      '',
     );
-    const relevantFileNames: string[] = [];
-    fs.readdir(this.feedsDirectory, { withFileTypes: true }, (error, files) => {
-      if (error) {
-        throw new Error(
-          `Error trying to look for feeds in ${this.feedsDirectory}: ${error}`,
-        );
-      } else {
-        files?.forEach((file) => {
-          const isValidFileType = file.name.endsWith(this.validFeedFileSuffix);
-          const fileNameWithoutSuffix = file.name.replace(
-            this.validFeedFileSuffix,
-            '',
-          );
-          if (this.validUserIds.includes(fileNameWithoutSuffix)) {
-            //TODO - ADD TIMESTAMP CHECK
+    if (this.validUserIds.includes(fileNameWithoutSuffix)) {
+      // relevantFileNames.push(fileNameWithoutSuffix);
+      //todo - write to DB
 
-            relevantFileNames.push(fileNameWithoutSuffix);
-          }
-        });
-
-        if (relevantFileNames.length) {
-          this.feedArrived(timeStamp, relevantFileNames);
-        } else {
-          this.feedFailure(timeStamp);
-        }
-      }
-    });
+      this.latestFeedTimeStamp = Date.now();
+      this.logger.log(`sending to DB ${fileName}`);
+    }
   }
 
-  private feedArrived(timeStamp: number, fileNames: string[]) {
+  private feedArrived() {
     //TODO - ADD TESTS
     if (this.isErrorModeTurnedOn) {
       this.isErrorModeTurnedOn = false;
-      this.logger.log(`New feeds found at ${timeStamp}`);
+      this.logger.log(`Back to noraml - new feeds found`);
     }
-    //todo - write to DB
   }
 
-  private feedFailure(timeStamp: number) {
+  private feedFailure() {
     //TODO - ADD TESTS
     if (!this.isErrorModeTurnedOn) {
       this.isErrorModeTurnedOn = true;
-      this.logger.warn(`Warning - No new feeds found at ${timeStamp}`);
+      this.logger.warn(`Warning - No new feeds found`);
+    }
+  }
+
+  private async checkForErrorsInFeed() {
+    const timeSinceLastFeed = (Date.now() - this.latestFeedTimeStamp) / 1000;
+    if (timeSinceLastFeed >= this.alertTimeoutInSeconds) {
+      this.feedFailure();
+    } else {
+      this.feedArrived();
     }
   }
 }
