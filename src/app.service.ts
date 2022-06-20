@@ -34,7 +34,7 @@ export class AppService {
     );
 
     fs.watch(this.feedsDirectory, (_event, filename) => {
-      if (fs.existsSync(`${this.feedsDirectory}\\${filename}`)) {
+      if (fs.existsSync(`${this.feedsDirectory}/${filename}`)) {
         this.checkAndReportNewFeed(filename);
       }
     });
